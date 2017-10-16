@@ -26,8 +26,6 @@
 #import "AIRMapSnapshot.h"
 #import "RCTConvert+AirMap.h"
 
-#import <MapKit/MapKit.h>
-
 static NSString *const RCTMapViewKey = @"MapView";
 
 
@@ -111,15 +109,39 @@ RCT_CUSTOM_VIEW_PROPERTY(initialRegion, MKCoordinateRegion, AIRMap)
 RCT_EXPORT_VIEW_PROPERTY(minZoomLevel, CGFloat)
 RCT_EXPORT_VIEW_PROPERTY(maxZoomLevel, CGFloat)
 
+RCT_CUSTOM_VIEW_PROPERTY(insetTop, CGFloat, AIRMapManager)
+{
+    self.insetTop = [json intValue];
+}
+
+RCT_CUSTOM_VIEW_PROPERTY(insetBottom, CGFloat, AIRMapManager)
+{
+    self.insetBottom = [json intValue];
+}
+
+RCT_CUSTOM_VIEW_PROPERTY(insetLeft, CGFloat, AIRMapManager)
+{
+    self.insetLeft = [json intValue];
+}
+
+RCT_CUSTOM_VIEW_PROPERTY(insetRight, CGFloat, AIRMapManager)
+{
+    self.insetRight = [json intValue];
+}
 
 RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, AIRMap)
 {
     if (json == nil) return;
 
+    // TODO insets
+    NSLog(@"insets: [%d, %d, %d, %d]", self.insetLeft, self.insetTop, self.insetRight, self.insetBottom);  
+
     // don't emit region change events when we are setting the region
     BOOL originalIgnore = view.ignoreRegionChanges;
     view.ignoreRegionChanges = YES;
-    [view setRegion:[RCTConvert MKCoordinateRegion:json] animated:NO];
+    MKCoordinateRegion region = [RCTConvert MKCoordinateRegion:json];
+    /// TODO
+    [view setRegion:region animated:NO];
     view.ignoreRegionChanges = originalIgnore;
 }
 
@@ -128,22 +150,18 @@ RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, AIRMap)
 
 RCT_EXPORT_METHOD(animateToRegion:(nonnull NSNumber *)reactTag
         withRegion:(MKCoordinateRegion)region
-        withDuration:(CGFloat)duration
-        withOffset:(NSDictionary *)offset)
+        withDuration:(CGFloat)duration)
 {
     [self.bridge.uiManager addUIBlock:^(__unused RCTUIManager *uiManager, NSDictionary<NSNumber *, UIView *> *viewRegistry) {
         id view = viewRegistry[reactTag];
         if (![view isKindOfClass:[AIRMap class]]) {
             RCTLogError(@"Invalid view returned from registry, expecting AIRMap, got: %@", view);
         } else {
-            CGPoint center = [view convertCoordinate:region.center toPointToView:view];
-            center.x += [RCTConvert CGFloat:offset[@"x"]];
-            center.y += [RCTConvert CGFloat:offset[@"y"]];
-            CLLocationCoordinate2D offsetCenter = [view convertPoint:center toCoordinateFromView:view];
-            MKCoordinateRegion offsetRegion = { offsetCenter, region.span };
+            UIEdgeInsets insets = [self getEdgeInsets];
+            MKMapRect rect = [AIRMapManager getMKMapRectFromMKCoordinateRegion: region];
 
             [AIRMap animateWithDuration:duration/1000 animations:^{
-                [(AIRMap *)view setRegion:offsetRegion animated:YES];
+                [(AIRMap *)view setVisibleMapRect:rect edgePadding:insets animated:YES];
             }];
         }
     }];
@@ -990,6 +1008,34 @@ static int kDragCenterContext;
     double zoomLevel = AIRMapMaxZoomLevel - zoomExponent;
 
     return zoomLevel;
+}
+
+- (UIEdgeInsets) getEdgeInsets {
+    return UIEdgeInsetsMake(self.insetTop, self.insetLeft, self.insetBottom, self.insetRight);
+}
+
++ (MKMapRect) getMKMapRectFromMKCoordinateRegion: (MKCoordinateRegion)region {
+    CLLocationCoordinate2D topLeftCoordinate =
+    CLLocationCoordinate2DMake(region.center.latitude
+                               + (region.span.latitudeDelta/2.0),
+                               region.center.longitude
+                               - (region.span.longitudeDelta/2.0));
+    
+    MKMapPoint topLeftMapPoint = MKMapPointForCoordinate(topLeftCoordinate);
+    
+    CLLocationCoordinate2D bottomRightCoordinate =
+    CLLocationCoordinate2DMake(region.center.latitude
+                               - (region.span.latitudeDelta/2.0),
+                               region.center.longitude
+                               + (region.span.longitudeDelta/2.0));
+    
+    MKMapPoint bottomRightMapPoint = MKMapPointForCoordinate(bottomRightCoordinate);
+    
+    MKMapRect mapRect = MKMapRectMake(topLeftMapPoint.x,
+                                      topLeftMapPoint.y,
+                                      fabs(bottomRightMapPoint.x-topLeftMapPoint.x),
+                                      fabs(bottomRightMapPoint.y-topLeftMapPoint.y));
+    return mapRect;
 }
 
 @end

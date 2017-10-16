@@ -15,6 +15,10 @@
 
 @interface AIRMapManager : RCTViewManager
 
+@property (nonatomic, assign) NSInteger insetTop;
+@property (nonatomic, assign) NSInteger insetBottom;
+@property (nonatomic, assign) NSInteger insetLeft;
+@property (nonatomic, assign) NSInteger insetRight;
 
 - (void)setCenterCoordinate:(CLLocationCoordinate2D)centerCoordinate
     zoomLevel:(double)zoomLevel
@@ -25,5 +29,8 @@
                                  centerCoordinate:(CLLocationCoordinate2D)centerCoordinate
 								                     andZoomLevel:(double)zoomLevel;
 - (double) zoomLevel:(AIRMap *)mapView;
+
+- (UIEdgeInsets) getEdgeInsets;
++ (MKMapRect) getMKMapRectFromMKCoordinateRegion: (MKCoordinateRegion)region;
 
 @end
