@@ -20,6 +20,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MapStyleOptions;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.annotation.Nullable;
@@ -205,11 +206,13 @@ public class AirMapManager extends ViewGroupManager<AirMapView> {
     float bearing;
     float angle;
     ReadableMap region;
+    ReadableMap offset;
 
     switch (commandId) {
       case ANIMATE_TO_REGION:
         region = args.getMap(0);
         duration = args.getInt(1);
+        offset = args.getMap(2);
         lng = region.getDouble("longitude");
         lat = region.getDouble("latitude");
         lngDelta = region.getDouble("longitudeDelta");
@@ -218,7 +221,7 @@ public class AirMapManager extends ViewGroupManager<AirMapView> {
             new LatLng(lat - latDelta / 2, lng - lngDelta / 2), // southwest
             new LatLng(lat + latDelta / 2, lng + lngDelta / 2)  // northeast
         );
-        view.animateToRegion(bounds, duration);
+        view.animateToRegion(bounds, duration, (int) offset.getDouble("x"), (int) offset.getDouble("y"));
         break;
 
       case ANIMATE_TO_COORDINATE:

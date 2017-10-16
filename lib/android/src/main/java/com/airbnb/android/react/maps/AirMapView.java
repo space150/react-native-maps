@@ -571,6 +571,29 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
     }
   }
 
+  public void animateToRegion(LatLngBounds bounds, int duration, int offsetX, int offsetY) {
+    if (map == null) return
+
+    Projection projection = map.getProjection();
+    Point center = projection.toScreenLocation(bounds.getCenter());
+    center.offset(offsetX, offsetY);
+    LatLng offsetCenter = projection.fromScreenLocation(center);
+
+    // take the new and subtract the old
+    LatLng offsetSouthWest = new LatLng(
+      bounds.southwest.latitude - (offsetCenter.latitude - bounds.getCenter().latitude),
+      bounds.southwest.longitude - (offsetCenter.longitude - bounds.getCenter().longitude)
+    );
+    LatLng offsetNorthEast = new LatLng(
+      bounds.northeast.latitude - (offsetCenter.latitude - bounds.getCenter().latitude),
+      bounds.northeast.longitude - (offsetCenter.longitude - bounds.getCenter().longitude)
+    );
+    LatLngBounds offsetBounds = new LatLngBounds(offsetSouthWest, offsetNorthEast);
+
+    startMonitoringRegion();
+    map.animateCamera(CameraUpdateFactory.newLatLngBounds(offsetBounds, 0), duration, null);
+  }
+
   public void animateToViewingAngle(float angle, int duration) {
     if (map != null) {
       startMonitoringRegion();
